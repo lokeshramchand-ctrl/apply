@@ -1,14 +1,17 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+datasource db {
+  provider = "sqlite"
+  url      = "file:./prisma/data/app.db"
 }
 
-datasource db {
-  provider = "postgresql"
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ApplicationDay {
+  id          String   @id @default(uuid())
+  date        DateTime @unique
+  count       Int
+  responses   Int      @default(0)
+  interviews  Int      @default(0)
+  createdAt   DateTime @default(now())
 }

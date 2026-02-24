@@ -1,16 +1,12 @@
-import { PrismaClient } from '@prisma/client';
-import { PrismaSQLite } from '@prisma/adapter-sqlite';
-import Database from 'better-sqlite3';
+import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = global as unknown as {
-  prisma: PrismaClient;
+  prisma: PrismaClient | undefined;
 };
 
-const db = new Database('./prisma/data/app.db');
-const adapter = new PrismaSQLite(db);
-
 export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({ adapter });
+  globalForPrisma.prisma ?? new PrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
