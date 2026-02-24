@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { logApplication } from "./actions/logApplication";
+import type { ApplicationDay } from "@prisma/client";
 
-function getHeatmapColor(count: number) {
+function getHeatmapColor(count: number): string {
   if (count === 0) return "#1a1a1a";
   if (count <= 2) return "#25382b";
   if (count <= 4) return "#2f543d";
@@ -10,13 +11,26 @@ function getHeatmapColor(count: number) {
 }
 
 export default async function ApplyTrack() {
-  const data = await prisma.applicationDay.findMany({
+  const data: ApplicationDay[] = await prisma.applicationDay.findMany({
     orderBy: { date: "asc" },
   });
 
-  // ---- Stats Calculations ----
-  const totalApplications = data.reduce((sum, d) => sum + d.count, 0);
-  const totalResponses = data.reduce((sum, d) => sum + d.responses, 0);
+  // ---- Build Fast Lookup Map (O(1) access) ----
+  const dataMap = new Map<string, ApplicationDay>();
+  data.forEach((entry) => {
+    dataMap.set(entry.date.toDateString(), entry);
+  });
+
+  // ---- Stats ----
+  const totalApplications = data.reduce(
+    (sum: number, d: ApplicationDay) => sum + d.count,
+    0
+  );
+
+  const totalResponses = data.reduce(
+    (sum: number, d: ApplicationDay) => sum + d.responses,
+    0
+  );
 
   const responseRate =
     totalApplications > 0
@@ -26,39 +40,42 @@ export default async function ApplyTrack() {
   const now = new Date();
 
   const activeDaysThisMonth = data.filter(
-    (d) =>
+    (d: ApplicationDay) =>
       d.date.getMonth() === now.getMonth() &&
       d.date.getFullYear() === now.getFullYear()
   ).length;
 
-  // ---- Streak Logic ----
+  // ---- Correct Streak Logic ----
   let currentStreak = 0;
+  let streakDate = new Date();
+  streakDate.setHours(0, 0, 0, 0);
 
-  const sorted = [...data].sort(
-    (a, b) => b.date.getTime() - a.date.getTime()
-  );
+  while (true) {
+    const key = streakDate.toDateString();
+    const entry = dataMap.get(key);
 
-  for (let i = 0; i < sorted.length; i++) {
-    if (sorted[i].count > 0) currentStreak++;
-    else break;
+    if (entry && entry.count > 0) {
+      currentStreak++;
+      streakDate.setDate(streakDate.getDate() - 1);
+    } else {
+      break;
+    }
   }
 
-  // ---- Heatmap (Last 17 Weeks = 119 days) ----
+  // ---- Heatmap (Last 119 Days / 17 Weeks) ----
   const daysToShow = 119;
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const heatmapData = Array.from({ length: daysToShow }, (_, i) => {
-    const date = new Date();
-    date.setDate(today.getDate() - (daysToShow - i));
+    const date = new Date(today);
+    date.setDate(today.getDate() - (daysToShow - 1 - i));
 
-    const entry = data.find(
-      (d) =>
-        d.date.toDateString() === date.toDateString()
-    );
+    const entry = dataMap.get(date.toDateString());
 
     return {
       id: i,
-      count: entry?.count || 0,
+      count: entry?.count ?? 0,
     };
   });
 
@@ -104,13 +121,14 @@ export default async function ApplyTrack() {
         <div className="space-y-4">
           <h2 className="text-lg font-medium">Log Today's Effort</h2>
 
-          <form action={logApplication} className="bg-neutral-900 border border-neutral-800 p-6 rounded-lg space-y-6">
+          <form
+            action={logApplication}
+            className="bg-neutral-900 border border-neutral-800 p-6 rounded-lg space-y-6"
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
               <InputField name="count" label="Applications Today *" required />
               <InputField name="responses" label="Responses Received" />
               <InputField name="interviews" label="Interviews Scheduled" />
-
             </div>
 
             <button
@@ -127,9 +145,15 @@ export default async function ApplyTrack() {
   );
 }
 
-// ---- Small UI Components ----
+// ---- Components ----
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function StatCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
   return (
     <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg">
       <div className="text-2xl font-semibold text-white">{value}</div>
