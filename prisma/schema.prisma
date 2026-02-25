@@ -13,3 +13,14 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+model DayLog {
+  id         String   @id @default(uuid())
+  date       DateTime @unique
+  apps       Int
+  replies    Int      @default(0)
+  interviews Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([date])
+  @@index([createdAt])
+}
