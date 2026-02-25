@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Flame, Briefcase, CalendarDays, Percent, Send } from 'lucide-react';
-import { logApplication, getHeatmapData } from '../app/actions';
+import { logApplication, getHeatmapData } from './actions';
 
 export default function ApplyTrack() {
   const [heatmapData, setHeatmapData] = useState<{id: number, date: string, count: number}[]>([]);
