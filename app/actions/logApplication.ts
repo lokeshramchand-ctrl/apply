@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/actions";
 import { revalidatePath } from "next/cache";
 
 export async function logApplication(formData: FormData) {
